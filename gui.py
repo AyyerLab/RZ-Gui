@@ -15,16 +15,18 @@ class RZ_gui(QtGui.QWidget):
     def __init__(self, fname):
         super(RZ_gui, self).__init__()
         self.h5_fname = fname
+        self.h5_dset = 'hits/frames'
+        self.frame_num = 0
         self.rz_flag = False
         self.update_flag = True
         self.auto_range = True
+        self.frame_changed = True
         self.assem_shape = None
         self.assem = None
         self.phi = 0.
         self.beta = 0.
         self.detd = 90. / 0.11
         
-        self.image = self.get_image()
         self.get_geom()
         
         self.init_UI()
@@ -40,10 +42,34 @@ class RZ_gui(QtGui.QWidget):
         self.imview.ui.menuBtn.hide()
         window.addWidget(self.imview, stretch=1)
         self.replot()
+        self.imview.setLevels(0,400)
+
+        line = pg.InfiniteLine(angle=0, movable=True, pen='g')
+        self.imview.addItem(line)
 
         # Options frame
         vbox = QtGui.QVBoxLayout()
         window.addLayout(vbox)
+
+        # -- HDF5 file and data set
+        hbox = QtGui.QHBoxLayout()
+        vbox.addLayout(hbox)
+        label = QtGui.QLabel('Filename:', self)
+        hbox.addWidget(label)
+        entry = QtGui.QLineEdit(self.h5_fname, self)
+        entry.textChanged.connect(self.fname_changed)
+        hbox.addWidget(entry)
+        label = QtGui.QLabel('H5 Dataset:', self)
+        hbox.addWidget(label)
+        entry = QtGui.QLineEdit(self.h5_dset, self)
+        entry.textChanged.connect(self.dset_changed)
+        hbox.addWidget(entry)
+        label = QtGui.QLabel('Num:', self)
+        hbox.addWidget(label)
+        entry = QtGui.QLineEdit('0', self)
+        entry.textChanged.connect(self.frame_num_changed)
+        hbox.addWidget(entry)
+        hbox.addStretch(1)
 
         # -- Sliders
         hbox = QtGui.QHBoxLayout()
@@ -57,7 +83,7 @@ class RZ_gui(QtGui.QWidget):
         hbox.addWidget(self.phi_slider)
         self.phi_val = QtGui.QLabel('%.3d'%self.phi_slider.value(), self)
         hbox.addWidget(self.phi_val)
-        label = QtGui.QLabel('Beta', self)
+        label = QtGui.QLabel('    Beta', self)
         hbox.addWidget(label)
         self.beta_slider = QtGui.QSlider(QtCore.Qt.Horizontal, self)
         self.beta_slider.valueChanged.connect(self.beta_changed)
@@ -92,8 +118,7 @@ class RZ_gui(QtGui.QWidget):
 
     def get_image(self):
         with h5py.File(self.h5_fname, 'r') as f:
-            #img = f['data/calib'][0].flatten()
-            img = f['hits/frames'][0].flatten()
+            img = f[self.h5_dset][self.frame_num].flatten()
         return img
 
     def get_geom(self):
@@ -115,6 +140,10 @@ class RZ_gui(QtGui.QWidget):
         if not self.update_flag:
             return
 
+        if self.frame_changed:
+            self.image = self.get_image()/self.pol
+            self.frame_changed = False
+
         if self.rz_flag:
             qx0 = np.cos(self.phi)*self.qx - np.sin(self.phi)*self.qy
             qy0 = np.cos(self.phi)*self.qy + np.sin(self.phi)*self.qx
@@ -132,7 +161,7 @@ class RZ_gui(QtGui.QWidget):
             np.add.at(self.rz_embed, [R+500, Z+500], self.image[self.mask<2])
             self.rz_embed /= weights
             self.rz_embed = self.rz_embed + self.rz_embed[::-1]
-            self.imview.setImage(self.rz_embed, levels=(0,400), autoRange=self.auto_range, autoHistogramRange=False)
+            self.imview.setImage(self.rz_embed, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
             self.auto_range = False
         else:
             rx = np.cos(self.phi)*self.cx - np.sin(self.phi)*self.cy
@@ -145,7 +174,7 @@ class RZ_gui(QtGui.QWidget):
             weights[weights==0] = 1
             np.add.at(self.rot_image, [rx+self.dx, ry+self.dy], self.image[self.mask<2])
             self.rot_image /= weights
-            self.imview.setImage(self.rot_image, levels=(0,400), autoRange=self.auto_range, autoHistogramRange=False)
+            self.imview.setImage(self.rot_image, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
             self.auto_range = False
 
     def phi_changed(self, value=None):
@@ -165,8 +194,30 @@ class RZ_gui(QtGui.QWidget):
         self.update_flag = self.update_button.isChecked()
         self.replot()
 
+    def fname_changed(self, text=None):
+        self.h5_fname = text
+        self.frame_changed = True
+
+    def dset_changed(self, text=None):
+        self.h5_dset = text
+        self.frame_changed = True
+
+    def frame_num_changed(self, text=None):
+        try:
+            self.frame_num = int(text)
+            self.frame_changed = True
+        except ValueError:
+            pass
+
     def save_image(self):
-        pass
+        if self.rz_flag:
+            fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'_rz.npy'
+            print 'Saving to', fname
+            np.save(fname, self.rz_embed)
+        else:
+            fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'.npy'
+            print 'Saving to', fname
+            np.save(fname, self.rot_image)
 
     def keyPressEvent(self, event=None):
         if event.key() == QtCore.Qt.Key_Return:
