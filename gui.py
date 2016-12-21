@@ -21,6 +21,7 @@ class RZ_gui(QtGui.QWidget):
         self.update_flag = True
         self.r_avg_flag = False
         self.z_avg_flag = False
+        self.subtract_bg_flag = False
         self.auto_range = True
         self.frame_changed = True
         self.assem_shape = None
@@ -113,6 +114,10 @@ class RZ_gui(QtGui.QWidget):
         self.z_avg_button.stateChanged.connect(self.z_avg_flag_changed)
         self.z_avg_button.setChecked(False)
         hbox.addWidget(self.z_avg_button)
+        self.subtract_bg_button = QtGui.QCheckBox('Subtract BG', self)
+        self.subtract_bg_button.stateChanged.connect(self.subtract_bg_flag_changed)
+        self.subtract_bg_button.setChecked(False)
+        hbox.addWidget(self.subtract_bg_button)
         hbox.addStretch(1)
         button = QtGui.QPushButton('Save', self)
         button.clicked.connect(self.save_image)
@@ -145,6 +150,10 @@ class RZ_gui(QtGui.QWidget):
         self.qz = 500. * (self.detd / norm - 1.)
 
         self.dx = self.dy = self.size/2
+        x, y = np.indices((1001,1001))
+        x -= 500; y -= 500
+        self.intrad = np.sqrt(x*x + y*y).astype('i4')
+        self.radcounts = np.zeros((self.intrad.max()+1))
 
     def replot(self):
         if not self.update_flag:
@@ -178,6 +187,13 @@ class RZ_gui(QtGui.QWidget):
                 self.rz_embed = self.rz_embed + self.rz_embed[:,::-1]
             self.rz_embed[weights>0] /= weights[weights>0]
 
+            if self.subtract_bg_flag:
+                self.radcounts.fill(0.)
+                radavg = np.zeros_like(self.radcounts)
+                np.add.at(self.radcounts, self.intrad[weights>0], 1)
+                np.add.at(radavg, self.intrad[weights>0], self.rz_embed[weights>0])
+                radavg[self.radcounts>0] /= self.radcounts[self.radcounts>0]
+                self.rz_embed[weights>0] = self.rz_embed[weights>0] - radavg[self.intrad[weights>0]]
             self.imview.setImage(self.rz_embed, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
             self.auto_range = False
         else:
@@ -217,6 +233,10 @@ class RZ_gui(QtGui.QWidget):
 
     def z_avg_flag_changed(self, event=None):
         self.z_avg_flag = self.z_avg_button.isChecked()
+        self.replot()
+
+    def subtract_bg_flag_changed(self, event=None):
+        self.subtract_bg_flag = self.subtract_bg_button.isChecked()
         self.replot()
 
     def fname_changed(self, text=None):
