@@ -80,9 +80,9 @@ class RZ_gui(QtGui.QWidget):
         self.phi_slider = QtGui.QSlider(QtCore.Qt.Horizontal, self)
         self.phi_slider.valueChanged.connect(self.phi_changed)
         self.phi_slider.sliderReleased.connect(self.replot)
-        self.phi_slider.setRange(0,360)
+        self.phi_slider.setRange(0,720)
         hbox.addWidget(self.phi_slider)
-        self.phi_val = QtGui.QLabel('%.3d'%self.phi_slider.value(), self)
+        self.phi_val = QtGui.QLabel('%4.1f'%(self.phi_slider.value()/2.), self)
         hbox.addWidget(self.phi_val)
         label = QtGui.QLabel('    Beta', self)
         hbox.addWidget(label)
@@ -91,7 +91,7 @@ class RZ_gui(QtGui.QWidget):
         self.beta_slider.sliderReleased.connect(self.replot)
         self.beta_slider.setRange(0,180)
         hbox.addWidget(self.beta_slider)
-        self.beta_val = QtGui.QLabel('%4.1f'%self.beta_slider.value(), self)
+        self.beta_val = QtGui.QLabel('%4.1f'%(self.beta_slider.value()/2.), self)
         hbox.addWidget(self.beta_val)
 
         # -- Save and Quit buttons
@@ -187,8 +187,8 @@ class RZ_gui(QtGui.QWidget):
             self.auto_range = False
 
     def phi_changed(self, value=None):
-        self.phi = np.pi * value / 180.
-        self.phi_val.setText('%.3d'%value)
+        self.phi = np.pi * value / 180. / 2.
+        self.phi_val.setText('%4.1f'%(value/2.))
 
     def beta_changed(self, value=None):
         self.beta = np.pi * value / 180. / 2.
