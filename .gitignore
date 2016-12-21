@@ -1,0 +1,4 @@
+# Data files
+*.h5
+*.npy
+*.dat
