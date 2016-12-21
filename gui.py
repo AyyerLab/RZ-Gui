@@ -20,6 +20,7 @@ class RZ_gui(QtGui.QWidget):
         self.rz_flag = False
         self.update_flag = True
         self.r_avg_flag = False
+        self.z_avg_flag = False
         self.auto_range = True
         self.frame_changed = True
         self.assem_shape = None
@@ -37,7 +38,7 @@ class RZ_gui(QtGui.QWidget):
         window = QtGui.QVBoxLayout()
 
         # RZ merge ImageView
-        self.imview = pg.ImageView(self)
+        self.imview = pg.ImageView(self, view=pg.PlotItem())
         self.imview.scene.setClickRadius(1)
         self.imview.ui.roiBtn.hide()
         self.imview.ui.menuBtn.hide()
@@ -104,10 +105,14 @@ class RZ_gui(QtGui.QWidget):
         self.update_button.stateChanged.connect(self.update_flag_changed)
         self.update_button.setChecked(True)
         hbox.addWidget(self.update_button)
-        self.r_avg_button = QtGui.QCheckBox('Meridian average', self)
+        self.r_avg_button = QtGui.QCheckBox('Meridional average', self)
         self.r_avg_button.stateChanged.connect(self.r_avg_flag_changed)
         self.r_avg_button.setChecked(False)
         hbox.addWidget(self.r_avg_button)
+        self.z_avg_button = QtGui.QCheckBox('Equatorial average', self)
+        self.z_avg_button.stateChanged.connect(self.z_avg_flag_changed)
+        self.z_avg_button.setChecked(False)
+        hbox.addWidget(self.z_avg_button)
         hbox.addStretch(1)
         button = QtGui.QPushButton('Save', self)
         button.clicked.connect(self.save_image)
@@ -168,6 +173,9 @@ class RZ_gui(QtGui.QWidget):
             if self.r_avg_flag:
                 weights = weights + weights[::-1]
                 self.rz_embed = self.rz_embed + self.rz_embed[::-1]
+            if self.z_avg_flag:
+                weights = weights + weights[:,::-1]
+                self.rz_embed = self.rz_embed + self.rz_embed[:,::-1]
             self.rz_embed[weights>0] /= weights[weights>0]
 
             self.imview.setImage(self.rz_embed, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
@@ -205,6 +213,10 @@ class RZ_gui(QtGui.QWidget):
 
     def r_avg_flag_changed(self, event=None):
         self.r_avg_flag = self.r_avg_button.isChecked()
+        self.replot()
+
+    def z_avg_flag_changed(self, event=None):
+        self.z_avg_flag = self.z_avg_button.isChecked()
         self.replot()
 
     def fname_changed(self, text=None):
