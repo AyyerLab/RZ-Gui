@@ -176,24 +176,24 @@ class RZ_gui(QtGui.QWidget):
             if not self.r_avg_flag:
                 R[qx1[self.mask<2]<0.] = -R[qx1[self.mask<2]<0.]
             self.rz_embed = np.zeros((1001,1001))
-            weights = np.zeros_like(self.rz_embed)
-            np.add.at(weights, [R+500, Z+500], 1)
+            self.weights = np.zeros_like(self.rz_embed)
+            np.add.at(self.weights, [R+500, Z+500], 1)
             np.add.at(self.rz_embed, [R+500, Z+500], self.image[self.mask<2])
             if self.r_avg_flag:
-                weights = weights + weights[::-1]
+                self.weights = self.weights + self.weights[::-1]
                 self.rz_embed = self.rz_embed + self.rz_embed[::-1]
             if self.z_avg_flag:
-                weights = weights + weights[:,::-1]
+                self.weights = self.weights + self.weights[:,::-1]
                 self.rz_embed = self.rz_embed + self.rz_embed[:,::-1]
-            self.rz_embed[weights>0] /= weights[weights>0]
+            self.rz_embed[self.weights>0] /= self.weights[self.weights>0]
 
             if self.subtract_bg_flag:
                 self.radcounts.fill(0.)
                 radavg = np.zeros_like(self.radcounts)
-                np.add.at(self.radcounts, self.intrad[weights>0], 1)
-                np.add.at(radavg, self.intrad[weights>0], self.rz_embed[weights>0])
+                np.add.at(self.radcounts, self.intrad[self.weights>0], 1)
+                np.add.at(radavg, self.intrad[self.weights>0], self.rz_embed[self.weights>0])
                 radavg[self.radcounts>0] /= self.radcounts[self.radcounts>0]
-                self.rz_embed[weights>0] = self.rz_embed[weights>0] - radavg[self.intrad[weights>0]]
+                self.rz_embed[self.weights>0] = self.rz_embed[self.weights>0] - radavg[self.intrad[self.weights>0]]
             self.imview.setImage(self.rz_embed, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
             self.auto_range = False
         else:
@@ -202,11 +202,10 @@ class RZ_gui(QtGui.QWidget):
             rx = np.round(rx).astype('i4')[self.mask<2]
             ry = np.round(ry).astype('i4')[self.mask<2]
             self.rot_image = np.zeros((self.size, self.size))
-            weights = np.zeros_like(self.rot_image)
-            np.add.at(weights, [rx+self.dx, ry+self.dy], 1)
-            weights[weights==0] = 1
+            self.weights = np.zeros_like(self.rot_image)
+            np.add.at(self.weights, [rx+self.dx, ry+self.dy], 1)
             np.add.at(self.rot_image, [rx+self.dx, ry+self.dy], self.image[self.mask<2])
-            self.rot_image /= weights
+            self.rot_image[self.weights>0] /= self.weights[self.weights>0]
             self.imview.setImage(self.rot_image, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
             self.auto_range = False
 
@@ -240,7 +239,7 @@ class RZ_gui(QtGui.QWidget):
         self.replot()
 
     def fname_changed(self, text=None):
-        self.h5_fname = text
+        self.h5_fname = str(text)
         self.frame_changed = True
 
     def dset_changed(self, text=None):
