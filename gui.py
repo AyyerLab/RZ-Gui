@@ -49,6 +49,8 @@ class RZ_gui(QtGui.QWidget):
 
         line = pg.InfiniteLine(angle=0, movable=True, pen='g')
         self.imview.addItem(line)
+        line = pg.InfiniteLine(angle=90, movable=True, pen='g')
+        self.imview.addItem(line)
 
         # Options frame
         vbox = QtGui.QVBoxLayout()
