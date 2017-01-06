@@ -26,6 +26,7 @@ class RZ_gui(QtGui.QWidget):
         self.frame_changed = True
         self.assem_shape = None
         self.assem = None
+        self.angles = None
         self.phi = 0.
         self.beta = 0.
         self.detd = 90. / 0.11
@@ -48,6 +49,8 @@ class RZ_gui(QtGui.QWidget):
         self.imview.setLevels(0,400)
 
         line = pg.InfiniteLine(angle=0, movable=True, pen='g')
+        self.imview.addItem(line)
+        line = pg.InfiniteLine(angle=90, movable=True, pen='g')
         self.imview.addItem(line)
         line = pg.InfiniteLine(angle=90, movable=True, pen='g')
         self.imview.addItem(line)
@@ -121,6 +124,9 @@ class RZ_gui(QtGui.QWidget):
         self.subtract_bg_button.setChecked(False)
         hbox.addWidget(self.subtract_bg_button)
         hbox.addStretch(1)
+        button = QtGui.QPushButton('Save Angles', self)
+        button.clicked.connect(self.save_angles)
+        hbox.addWidget(button)
         button = QtGui.QPushButton('Save', self)
         button.clicked.connect(self.save_image)
         hbox.addWidget(button)
@@ -136,6 +142,9 @@ class RZ_gui(QtGui.QWidget):
     def get_image(self):
         with h5py.File(self.h5_fname, 'r') as f:
             img = f[self.h5_dset][self.frame_num].flatten()
+            if self.angles is None:
+                self.angles = np.zeros((f[self.h5_dset].shape[0], 3))
+                self.angles[:,0] = np.arange(self.angles.shape[0])
         return img
 
     def get_geom(self):
@@ -214,10 +223,12 @@ class RZ_gui(QtGui.QWidget):
     def phi_changed(self, value=None):
         self.phi = np.pi * value / 180. / 2.
         self.phi_val.setText('%4.1f'%(value/2.))
+        self.angles[self.frame_num,1] = value/2.
 
     def beta_changed(self, value=None):
         self.beta = np.pi * value / 180. / 2.
         self.beta_val.setText('%4.1f'%(value/2.))
+        self.angles[self.frame_num,2] = value/2.
 
     def rz_flag_changed(self, event=None):
         self.rz_flag = self.rz_button.isChecked()
@@ -265,13 +276,16 @@ class RZ_gui(QtGui.QWidget):
             print 'Saving to', fname
             np.save(fname, self.rot_image)
 
+    def save_angles(self):
+        fname = os.path.splitext(self.h5_fname)[0]+'_angles.dat'
+        print 'Saving angles to', fname
+        np.savetxt(fname, self.angles, fmt='%.4d %5.1f %5.1f', header='Num    Phi  Beta', comments='')
+
     def keyPressEvent(self, event=None):
         if event.key() == QtCore.Qt.Key_Return:
             self.replot()
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
-    #gui = RZ_gui('allruns_TMV_outstandingmulti_cheetahformat.h5')
-    #gui = RZ_gui('tmv_best.h5')
     gui = RZ_gui('TMV_outstanding.h5', 'data/calib')
     sys.exit(app.exec_())
