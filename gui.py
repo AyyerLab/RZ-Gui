@@ -45,7 +45,6 @@ class RZ_gui(QtGui.QWidget):
         self.imview.ui.roiBtn.hide()
         self.imview.ui.menuBtn.hide()
         window.addWidget(self.imview, stretch=1)
-        self.replot()
         self.imview.setLevels(0,400)
 
         line = pg.InfiniteLine(angle=0, movable=True, pen='g')
@@ -130,10 +129,14 @@ class RZ_gui(QtGui.QWidget):
         button = QtGui.QPushButton('Save', self)
         button.clicked.connect(self.save_image)
         hbox.addWidget(button)
+        button = QtGui.QPushButton('Save All', self)
+        button.clicked.connect(self.save_all)
+        hbox.addWidget(button)
         button = QtGui.QPushButton('Quit', self)
         button.clicked.connect(self.close)
         hbox.addWidget(button)
 
+        self.replot()
         self.setLayout(window)
         self.setGeometry(100,100,1000,800)
         self.setWindowTitle('Manual RZ Embedding GUI')
@@ -142,9 +145,19 @@ class RZ_gui(QtGui.QWidget):
     def get_image(self):
         with h5py.File(self.h5_fname, 'r') as f:
             img = f[self.h5_dset][self.frame_num].flatten()
+            self.num_frames = f[self.h5_dset].shape[0]
             if self.angles is None:
-                self.angles = np.zeros((f[self.h5_dset].shape[0], 3))
-                self.angles[:,0] = np.arange(self.angles.shape[0])
+                fname = os.path.splitext(self.h5_fname)[0]+'_angles.dat'
+                if os.path.isfile(fname):
+                    print 'Reading angles from', fname
+                    self.angles = np.loadtxt(fname)
+                else:
+                    self.angles = np.zeros((f[self.h5_dset].shape[0], 3))
+                    self.angles[:,0] = np.arange(self.angles.shape[0])
+         
+        self.phi_slider.setValue(self.angles[self.frame_num, 1]*2.)
+        self.beta_slider.setValue(self.angles[self.frame_num, 2]*2.)
+        
         return img
 
     def get_geom(self):
@@ -164,6 +177,12 @@ class RZ_gui(QtGui.QWidget):
         x, y = np.indices((1001,1001))
         x -= 500; y -= 500
         self.intrad = np.sqrt(x*x + y*y).astype('i4')
+        self.radpix = np.ones_like(self.intrad, dtype=np.bool)
+        # ---- Amyloid ----
+        self.radpix[np.absolute(y)>120] = False
+        self.radpix[np.absolute(y)<40] = False
+        self.radpix[(self.intrad<=40) & (np.absolute(y)>20)] = True
+        # -----------------
         self.radcounts = np.zeros((self.intrad.max()+1))
 
     def replot(self):
@@ -201,8 +220,8 @@ class RZ_gui(QtGui.QWidget):
             if self.subtract_bg_flag:
                 self.radcounts.fill(0.)
                 radavg = np.zeros_like(self.radcounts)
-                np.add.at(self.radcounts, self.intrad[self.weights>0], 1)
-                np.add.at(radavg, self.intrad[self.weights>0], self.rz_embed[self.weights>0])
+                np.add.at(self.radcounts, self.intrad[(self.weights>0) & (self.radpix)], 1)
+                np.add.at(radavg, self.intrad[(self.weights>0) & (self.radpix)], self.rz_embed[(self.weights>0) & (self.radpix)])
                 radavg[self.radcounts>0] /= self.radcounts[self.radcounts>0]
                 self.rz_embed[self.weights>0] = self.rz_embed[self.weights>0] - radavg[self.intrad[self.weights>0]]
             self.imview.setImage(self.rz_embed, autoLevels=False, autoRange=self.auto_range, autoHistogramRange=False)
@@ -271,6 +290,8 @@ class RZ_gui(QtGui.QWidget):
             fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'_rz.npy'
             print 'Saving to', fname
             np.save(fname, self.rz_embed)
+            fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'_rzw.npy'
+            np.save(fname, self.weights)
         else:
             fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'.npy'
             print 'Saving to', fname
@@ -281,11 +302,21 @@ class RZ_gui(QtGui.QWidget):
         print 'Saving angles to', fname
         np.savetxt(fname, self.angles, fmt='%.4d %5.1f %5.1f', header='Num    Phi  Beta', comments='')
 
-    def keyPressEvent(self, event=None):
-        if event.key() == QtCore.Qt.Key_Return:
+    def save_all(self):
+        for i in range(self.num_frames):
+            self.frame_num = i
+            self.frame_changed = True
+            self.replot()
+            self.save_image()
+
+    def keypressevent(self, event=None):
+        if event.key() == QtCore.Qt.Key_return:
             self.replot()
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
-    gui = RZ_gui('TMV_outstanding.h5', 'data/calib')
+    if len(sys.argv) > 1:
+        gui = RZ_gui(sys.argv[1], 'data/calib')
+    else:
+        gui = RZ_gui('bombesin_well_oriented.h5', 'data/calib')
     sys.exit(app.exec_())
