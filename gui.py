@@ -309,8 +309,8 @@ class RZ_gui(QtGui.QWidget):
             self.replot()
             self.save_image()
 
-    def keypressevent(self, event=None):
-        if event.key() == QtCore.Qt.Key_return:
+    def keyPressEvent(self, event=None):
+        if event.key() == QtCore.Qt.Key_Return:
             self.replot()
 
 if __name__ == '__main__':
