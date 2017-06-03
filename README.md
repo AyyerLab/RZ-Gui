@@ -3,7 +3,7 @@ This GUI can be used to embed diffraction frames into RZ space. The rotation
 and tilt angles are set using sliders.
 
 ## Dependencies
-The program is qritten in Python 2. The following modules are necessary:
+The program is written in Python 2. The following modules are necessary:
 
  * python 2.7+
  * numpy
