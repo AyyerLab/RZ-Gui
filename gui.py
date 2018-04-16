@@ -1,17 +1,23 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import os
 import time
 import datetime
-from PyQt4 import QtGui
-from PyQt4 import QtCore
+try: 
+    from PyQt5 import QtCore, QtWidgets, QtGui
+except ImportError:
+    print('PyQt5 import failed')
+    import sip
+    sip.setapi('QString', 2)
+    from PyQt4 import QtCore, QtGui
+    from PyQt4 import QtGui as QtWidgets
 import pyqtgraph as pg
 import numpy as np
 import h5py
 import pandas
 
-class RZ_gui(QtGui.QWidget):
+class RZ_gui(QtWidgets.QWidget):
     def __init__(self, h5_fname, h5_dset):
         super(RZ_gui, self).__init__()
         self.h5_fname = h5_fname
@@ -29,7 +35,7 @@ class RZ_gui(QtGui.QWidget):
         self.angles = None
         self.phi = 0.
         self.beta = 0.
-        self.detd = 90. / 0.11
+        self.detd = 85. / 0.11
         
         self.get_geom()
         
@@ -37,7 +43,7 @@ class RZ_gui(QtGui.QWidget):
 
     def init_UI(self):
         # Overall layout
-        window = QtGui.QVBoxLayout()
+        window = QtWidgets.QVBoxLayout()
 
         # RZ merge ImageView
         self.imview = pg.ImageView(self, view=pg.PlotItem())
@@ -55,84 +61,84 @@ class RZ_gui(QtGui.QWidget):
         self.imview.addItem(line)
 
         # Options frame
-        vbox = QtGui.QVBoxLayout()
+        vbox = QtWidgets.QVBoxLayout()
         window.addLayout(vbox)
 
         # -- HDF5 file and data set
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtWidgets.QHBoxLayout()
         vbox.addLayout(hbox)
-        label = QtGui.QLabel('Filename:', self)
+        label = QtWidgets.QLabel('Filename:', self)
         hbox.addWidget(label)
-        entry = QtGui.QLineEdit(self.h5_fname, self)
+        entry = QtWidgets.QLineEdit(self.h5_fname, self)
         entry.textChanged.connect(self.fname_changed)
         hbox.addWidget(entry)
-        label = QtGui.QLabel('H5 Dataset:', self)
+        label = QtWidgets.QLabel('H5 Dataset:', self)
         hbox.addWidget(label)
-        entry = QtGui.QLineEdit(self.h5_dset, self)
+        entry = QtWidgets.QLineEdit(self.h5_dset, self)
         entry.textChanged.connect(self.dset_changed)
         hbox.addWidget(entry)
-        label = QtGui.QLabel('Num:', self)
+        label = QtWidgets.QLabel('Num:', self)
         hbox.addWidget(label)
-        entry = QtGui.QLineEdit('0', self)
+        entry = QtWidgets.QLineEdit('0', self)
         entry.textChanged.connect(self.frame_num_changed)
         hbox.addWidget(entry)
         hbox.addStretch(1)
 
         # -- Sliders
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtWidgets.QHBoxLayout()
         vbox.addLayout(hbox)
-        label = QtGui.QLabel('Phi', self)
+        label = QtWidgets.QLabel('Phi', self)
         hbox.addWidget(label)
-        self.phi_slider = QtGui.QSlider(QtCore.Qt.Horizontal, self)
+        self.phi_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
         self.phi_slider.valueChanged.connect(self.phi_changed)
         self.phi_slider.sliderReleased.connect(self.replot)
         self.phi_slider.setRange(0,720)
         hbox.addWidget(self.phi_slider)
-        self.phi_val = QtGui.QLabel('%4.1f'%(self.phi_slider.value()/2.), self)
+        self.phi_val = QtWidgets.QLabel('%4.1f'%(self.phi_slider.value()/2.), self)
         hbox.addWidget(self.phi_val)
-        label = QtGui.QLabel('    Beta', self)
+        label = QtWidgets.QLabel('    Beta', self)
         hbox.addWidget(label)
-        self.beta_slider = QtGui.QSlider(QtCore.Qt.Horizontal, self)
+        self.beta_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
         self.beta_slider.valueChanged.connect(self.beta_changed)
         self.beta_slider.sliderReleased.connect(self.replot)
         self.beta_slider.setRange(0,180)
         hbox.addWidget(self.beta_slider)
-        self.beta_val = QtGui.QLabel('%4.1f'%(self.beta_slider.value()/2.), self)
+        self.beta_val = QtWidgets.QLabel('%4.1f'%(self.beta_slider.value()/2.), self)
         hbox.addWidget(self.beta_val)
 
         # -- Save and Quit buttons
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtWidgets.QHBoxLayout()
         vbox.addLayout(hbox)
-        self.rz_button = QtGui.QCheckBox('RZ Embed', self)
+        self.rz_button = QtWidgets.QCheckBox('RZ Embed', self)
         self.rz_button.stateChanged.connect(self.rz_flag_changed)
         hbox.addWidget(self.rz_button)
-        self.update_button = QtGui.QCheckBox('Update Plot', self)
+        self.update_button = QtWidgets.QCheckBox('Update Plot', self)
         self.update_button.stateChanged.connect(self.update_flag_changed)
         self.update_button.setChecked(True)
         hbox.addWidget(self.update_button)
-        self.r_avg_button = QtGui.QCheckBox('Meridional average', self)
+        self.r_avg_button = QtWidgets.QCheckBox('Meridional average', self)
         self.r_avg_button.stateChanged.connect(self.r_avg_flag_changed)
         self.r_avg_button.setChecked(False)
         hbox.addWidget(self.r_avg_button)
-        self.z_avg_button = QtGui.QCheckBox('Equatorial average', self)
+        self.z_avg_button = QtWidgets.QCheckBox('Equatorial average', self)
         self.z_avg_button.stateChanged.connect(self.z_avg_flag_changed)
         self.z_avg_button.setChecked(False)
         hbox.addWidget(self.z_avg_button)
-        self.subtract_bg_button = QtGui.QCheckBox('Subtract BG', self)
+        self.subtract_bg_button = QtWidgets.QCheckBox('Subtract BG', self)
         self.subtract_bg_button.stateChanged.connect(self.subtract_bg_flag_changed)
         self.subtract_bg_button.setChecked(False)
         hbox.addWidget(self.subtract_bg_button)
         hbox.addStretch(1)
-        button = QtGui.QPushButton('Save Angles', self)
+        button = QtWidgets.QPushButton('Save Angles', self)
         button.clicked.connect(self.save_angles)
         hbox.addWidget(button)
-        button = QtGui.QPushButton('Save', self)
+        button = QtWidgets.QPushButton('Save', self)
         button.clicked.connect(self.save_image)
         hbox.addWidget(button)
-        button = QtGui.QPushButton('Save All', self)
+        button = QtWidgets.QPushButton('Save All', self)
         button.clicked.connect(self.save_all)
         hbox.addWidget(button)
-        button = QtGui.QPushButton('Quit', self)
+        button = QtWidgets.QPushButton('Quit', self)
         button.clicked.connect(self.close)
         hbox.addWidget(button)
 
@@ -149,7 +155,7 @@ class RZ_gui(QtGui.QWidget):
             if self.angles is None:
                 fname = os.path.splitext(self.h5_fname)[0]+'_angles.dat'
                 if os.path.isfile(fname):
-                    print 'Reading angles from', fname
+                    print('Reading angles from', fname)
                     self.angles = np.loadtxt(fname)
                 else:
                     self.angles = np.zeros((f[self.h5_dset].shape[0], 3))
@@ -161,28 +167,39 @@ class RZ_gui(QtGui.QWidget):
         return img
 
     def get_geom(self):
-        det = pandas.read_csv('det_lm27.dat', skiprows=1, delimiter='\t', header=None).as_matrix()
+        #det = pandas.read_csv('det_lm27.dat', skiprows=1, delimiter='\t', header=None).as_matrix()
+        det = pandas.read_csv('det_cxim2716.dat', skiprows=1, delim_whitespace=True, header=None).as_matrix()
         self.cx = det[:,0]
         self.cy = det[:,1]
         self.pol = det[:,2]
         self.mask = det[:,3].astype('u1')
         self.size = 2*int(np.ceil(np.sqrt(self.cx*self.cx + self.cy*self.cy).max())) + 1
+        #self.ewald_rad = 200.
+        self.ewald_rad = 500.
         
         norm = np.sqrt(self.cx**2 + self.cy**2 + self.detd**2)
-        self.qx = 500. * self.cx / norm
-        self.qy = 500. * self.cy / norm
-        self.qz = 500. * (self.detd / norm - 1.)
+        self.qx = self.ewald_rad * self.cx / norm
+        self.qy = self.ewald_rad * self.cy / norm
+        self.qz = self.ewald_rad * (self.detd / norm - 1.)
 
-        self.dx = self.dy = self.size/2
-        x, y = np.indices((1001,1001))
-        x -= 500; y -= 500
+        self.dx = self.dy = self.size//2
+        size = int(2*self.ewald_rad + 1)
+        x, y = np.indices((size,size))
+        x -= size//2; y -= size//2 
         self.intrad = np.sqrt(x*x + y*y).astype('i4')
         self.radpix = np.ones_like(self.intrad, dtype=np.bool)
-        # ---- Amyloid ----
+        '''
+        # ---- Amyloid for ewald_rad = 200. ----
+        self.radpix[np.absolute(y)>40] = False
+        self.radpix[np.absolute(y)<18] = False
+        self.radpix[(self.intrad<=18) & (np.absolute(y)>8)] = True
+        # --------------------------------------
+        '''
+        # ---- Amyloid for ewald_rad = 500. ----
         self.radpix[np.absolute(y)>120] = False
         self.radpix[np.absolute(y)<40] = False
         self.radpix[(self.intrad<=40) & (np.absolute(y)>20)] = True
-        # -----------------
+        # --------------------------------------
         self.radcounts = np.zeros((self.intrad.max()+1))
 
     def replot(self):
@@ -205,10 +222,11 @@ class RZ_gui(QtGui.QWidget):
 
             if not self.r_avg_flag:
                 R[qx1[self.mask<2]<0.] = -R[qx1[self.mask<2]<0.]
-            self.rz_embed = np.zeros((1001,1001))
+            size = int(2*self.ewald_rad+1) ; center = size//2
+            self.rz_embed = np.zeros((size,size))
             self.weights = np.zeros_like(self.rz_embed)
-            np.add.at(self.weights, [R+500, Z+500], 1)
-            np.add.at(self.rz_embed, [R+500, Z+500], self.image[self.mask<2])
+            np.add.at(self.weights, [R+center, Z+center], 1)
+            np.add.at(self.rz_embed, [R+center, Z+center], self.image[self.mask<2])
             if self.r_avg_flag:
                 self.weights = self.weights + self.weights[::-1]
                 self.rz_embed = self.rz_embed + self.rz_embed[::-1]
@@ -288,18 +306,18 @@ class RZ_gui(QtGui.QWidget):
     def save_image(self):
         if self.rz_flag:
             fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'_rz.npy'
-            print 'Saving to', fname
+            print('Saving to', fname)
             np.save(fname, self.rz_embed)
             fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'_rzw.npy'
             np.save(fname, self.weights)
         else:
             fname = os.path.splitext(self.h5_fname)[0]+'_'+'%.3d'%self.frame_num+'.npy'
-            print 'Saving to', fname
+            print('Saving to', fname)
             np.save(fname, self.rot_image)
 
     def save_angles(self):
         fname = os.path.splitext(self.h5_fname)[0]+'_angles.dat'
-        print 'Saving angles to', fname
+        print('Saving angles to', fname)
         np.savetxt(fname, self.angles, fmt='%.4d %5.1f %5.1f', header='Num    Phi  Beta', comments='')
 
     def save_all(self):
@@ -314,7 +332,7 @@ class RZ_gui(QtGui.QWidget):
             self.replot()
 
 if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     if len(sys.argv) > 1:
         gui = RZ_gui(sys.argv[1], 'data/calib')
     else:
