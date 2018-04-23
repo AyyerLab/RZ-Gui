@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import datetime
+import argparse
 try: 
     from PyQt5 import QtCore, QtWidgets, QtGui
 except ImportError:
@@ -18,10 +19,11 @@ import h5py
 import pandas
 
 class RZ_gui(QtWidgets.QWidget):
-    def __init__(self, h5_fname, h5_dset):
+    def __init__(self, h5_fname, h5_dset, det_fname):
         super(RZ_gui, self).__init__()
         self.h5_fname = h5_fname
         self.h5_dset = h5_dset
+        self.det_fname = det_fname
         self.frame_num = 0
         self.rz_flag = False
         self.update_flag = True
@@ -168,7 +170,7 @@ class RZ_gui(QtWidgets.QWidget):
 
     def get_geom(self):
         #det = pandas.read_csv('det_lm27.dat', skiprows=1, delimiter='\t', header=None).as_matrix()
-        det = pandas.read_csv('det_cxim2716.dat', skiprows=1, delim_whitespace=True, header=None).as_matrix()
+        det = pandas.read_csv(self.det_fname, skiprows=1, delim_whitespace=True, header=None).as_matrix()
         self.cx = det[:,0]
         self.cy = det[:,1]
         self.pol = det[:,2]
@@ -332,9 +334,12 @@ class RZ_gui(QtWidgets.QWidget):
             self.replot()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Manual alignment and RZ embedding GUI')
+    parser.add_argument('h5_fname', help='Path to HDF5 file containing the frames to be aligned')
+    parser.add_argument('-d', '--det_fname', help='Path to detector file (default: det_cxim2716.dat)', default='det_cxim2716.dat')
+    parser.add_argument('-D', '--dset_name', help='HDF5 dataset name containing unassembled frames', default='data/calib')
+    args = parser.parse_args()
+    
     app = QtWidgets.QApplication(sys.argv)
-    if len(sys.argv) > 1:
-        gui = RZ_gui(sys.argv[1], 'data/calib')
-    else:
-        gui = RZ_gui('bombesin_well_oriented.h5', 'data/calib')
+    gui = RZ_gui(args.h5_fname, args.dset_name, args.det_fname)
     sys.exit(app.exec_())
