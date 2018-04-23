@@ -38,9 +38,10 @@ class RZ_gui(QtWidgets.QWidget):
         self.phi = 0.
         self.beta = 0.
         self.detd = 85. / 0.11
+        with h5py.File(self.h5_fname, 'r') as f:
+            self.num_frames = f[self.h5_dset].shape[0]
         
         self.get_geom()
-        
         self.init_UI()
 
     def init_UI(self):
@@ -81,9 +82,11 @@ class RZ_gui(QtWidgets.QWidget):
         hbox.addWidget(entry)
         label = QtWidgets.QLabel('Num:', self)
         hbox.addWidget(label)
-        entry = QtWidgets.QLineEdit('0', self)
-        entry.textChanged.connect(self.frame_num_changed)
-        hbox.addWidget(entry)
+        self.num_entry = QtWidgets.QSpinBox(self)
+        self.num_entry.setWrapping(True)
+        self.num_entry.setRange(0, self.num_frames-1)
+        self.num_entry.valueChanged.connect(self.frame_num_changed)
+        hbox.addWidget(self.num_entry)
         hbox.addStretch(1)
 
         # -- Sliders
@@ -298,12 +301,10 @@ class RZ_gui(QtWidgets.QWidget):
         self.h5_dset = text
         self.frame_changed = True
 
-    def frame_num_changed(self, text=None):
-        try:
-            self.frame_num = int(text)
-            self.frame_changed = True
-        except ValueError:
-            pass
+    def frame_num_changed(self, value=None):
+        self.frame_num = value
+        self.frame_changed = True
+        self.replot()
 
     def save_image(self):
         if self.rz_flag:
