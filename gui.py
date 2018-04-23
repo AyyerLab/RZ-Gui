@@ -337,7 +337,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Manual alignment and RZ embedding GUI')
     parser.add_argument('h5_fname', help='Path to HDF5 file containing the frames to be aligned')
     parser.add_argument('-d', '--det_fname', help='Path to detector file (default: det_cxim2716.dat)', default='det_cxim2716.dat')
-    parser.add_argument('-D', '--dset_name', help='HDF5 dataset name containing unassembled frames', default='data/calib')
+    parser.add_argument('-D', '--dset_name', help='HDF5 dataset name containing unassembled frames (default: data/calib)', default='data/calib')
     args = parser.parse_args()
     
     app = QtWidgets.QApplication(sys.argv)
